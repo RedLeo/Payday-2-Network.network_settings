@@ -34,6 +34,7 @@
 			<param type="string" /> <!-- Dlcs "dlc1 dlc2" -->
 			<param type="xuid" />
 			<param type="int" min="0" max="100" /> <!-- Player level -->
+			<param type="int" min="0" max="25" /> <!-- Player rank -->
 			<param type="int" min="-1" max="1024" />  <!-- Gameversion, needed for XBOX -->
 			<!--<param type="xnaddr" />-->
 			<param type="int" min="1" max="65536" /> <!-- Join attempt unique identifier -->
@@ -41,7 +42,7 @@
 		</message>
 		
 		<message name="join_request_reply" delivery="ordered" receiver="connection">	
-			<param type="int" min="0" max="8" /> <!-- Reply info 0 == may not join, 1 == ok, 2 == kicked, 3 == game started, 4 = map not owned, 5 = full, 6 = low lvl, 7 = wrong game version, 8 = authentication failed -->
+			<param type="int" min="0" max="9" /> <!-- Reply info 0 == may not join, 1 == ok, 2 == kicked, 3 == game started, 4 = map not owned, 5 = full, 6 = low lvl, 7 = wrong game version, 8 = authentication failed, 9 = banned -->
 			<param type="int" min="0" max="4" /> <!-- Peer id ~=0 when accepted -->
 			<param type="string" />				<!-- My character -->
 			<param type="int" min="1" max="127" /> <!-- level index -->
@@ -365,6 +366,10 @@
 			<param type="unit" />  <!-- Aggressor -->
 			<param type="vector3" />  <!-- Position -->
 		</message>
+
+		<message name="peer_joined_sound" delivery="ordered" receiver="connection" check="server_to_client">
+			<param type="bool" /> <!-- Infamous -->
+		</message>
 	</rpc>
 
 	<!-- END OF NETWORK BASE -->	<!-- END OF NETWORK BASE -->	<!-- END OF NETWORK BASE -->
@@ -508,6 +513,7 @@
 			<param type="unit" />	<!-- hostage unit -->
 			<param type="bool" />	<!-- enable -->
 			<param type="bool" />	<!-- trade success -->
+			<param type="bool" />	<!-- skip hint -->
 		</message>
 		
 		<message name="alarm_pager_interaction" delivery="ordered" receiver="unit">
@@ -988,20 +994,28 @@
 			<param type="int" min="0" max="32"/> <!-- equipment selection index -->
 			<param type="unit" /> <!-- user_unit -->
 			<param type="int" min="1" max="2" /> <!-- idstring index for sentry type to spawn -->
+			<param type="int" min="1" max="2" /> <!-- ammo upgrade level -->
 		</message>
 
-		<message name="remove_sentry_gun" delivery="ordered" receiver="unit" check="client_to_server">
-			<param type="unit" /> <!-- sentry gun unit -->
+		<message name="picked_up_sentry_gun" delivery="ordered" receiver="unit" check="client_to_server">
+			<param type="unit" /> <!-- sentry gun user_unit -->
+		</message>
+
+		<message name="picked_up_sentry_gun_response" delivery="ordered" receiver="unit" check="server_to_client">
+			<param type="int" /> <!-- sentry uid -->
+			<param type="int" min="0" max="255" /> <!-- current ammo -->
+			<param type="int" min="0" max="255" /> <!-- max ammo -->
+			<param type="int" min="1" max="2" /> <!-- sentry type index -->
 		</message>
 		
 		<message name="from_server_sentry_gun_place_result" delivery="ordered" receiver="unit" check="server_to_client">
 			<param type="int" min="1" max="4"/> <!-- owner peer_id -->
 			<param type="int" min="0" max="32"/> <!-- equipment selection index. zero means fail -->
 			<param type="unit" /> <!-- sentry gun -->
-			<param type="float" min="0" max="7"/> <!-- rot_speed_mul upgrade multiplier -->
-			<param type="float" min="0" max="1"/> <!-- spread upgrade multiplier -->
+			<param type="int" min="1" max="2"/> <!-- rotation speed upgrade level -->
+			<param type="int" min="1" max="2"/> <!-- spread upgrade level -->
 			<param type="bool" /> <!-- shield -->
-			<param type="int" min="0" max="8" />	<!-- damage multiplier -->
+			<param type="int" min="1" max="2" /> <!-- ammo upgrade level -->
 		</message>
 		
 		<message name="sentrygun_ammo" delivery="ordered" receiver="unit" check="server_to_client">
@@ -1162,18 +1176,18 @@
 		
 		<message name="say" delivery="unreliable" receiver="unit">
 			<param type="unit"/>
-			<param type="float" exact="true"/> <!-- Wwise event_id cast to 4-byte float -->
+			<param type="float" exact="true" bitmask="true"/> <!-- Wwise event_id cast to 4-byte float -->
 		</message>
 		
 		<message name="unit_sound_play" delivery="reliable" receiver="unit">
 			<param type="unit" />
-			<param type="float" exact="true"/> <!-- Wwise event_id cast to 4-byte float -->
+			<param type="float" exact="true" bitmask="true"/> <!-- Wwise event_id cast to 4-byte float -->
 			<param type="string"/> <!-- source name -->
 		</message>
 		
 		<message name="corpse_sound_play" delivery="ordered" receiver="unit" check="server_to_client">
 			<param type="int" min="0" max="4094" /> <!-- in engine: MAX_UNIT_ID = 4094 -->
-			<param type="float" exact="true"/> <!-- Wwise event_id cast to 4-byte float -->
+			<param type="float" exact="true" bitmask="true"/> <!-- Wwise event_id cast to 4-byte float -->
 			<param type="string"/> <!-- source name -->
 		</message>
 
@@ -1833,6 +1847,17 @@
 			<param type="int" />	<!-- peer id -->
 		</message>
 
+		<message name="request_stockholm_syndrome" delivery="ordered" receiver="connection" check="client_to_server">
+			<param type="vector3" />	<!-- position -->
+			<param type="int" />	<!-- peer id -->
+			<param type="bool" />	<!-- auto activate -->
+		</message>
+
+		<message name="stockholm_syndrome_results" delivery="ordered" receiver="connection" check="server_to_client">
+			<param type="bool" />	<!-- can trade true/false -->
+			<param type="int" min="0" max="3"/>	<!-- feedback, used for displaying hints -->
+		</message>
+
 		<message name="sync_stored_pos" delivery="ordered" receiver="unit">
 			<param type="unit" />
 			<param type="bool"/> 		<!-- allow sync -->
@@ -1847,6 +1872,28 @@
 		<message name="sync_set_super_syndrome" delivery="ordered" receiver="connection" check="client_to_server">
 			<param type="int" /> 	<!-- peer id -->
 			<param type="bool" /> 	<!-- active -->
+		</message>
+
+		<message name="sync_player_swansong" delivery="ordered" receiver="unit" check="client_to_server">
+			<param type="unit" />
+			<param type="bool" /> 	<!-- active -->
+		</message>
+
+		<message name="special_eq_response" delivery="ordered" receiver="unit" check="server_to_client">
+			<param type="unit" />
+		</message>
+
+		<message name="sync_swansong_hud" delivery="ordered" receiver="unit" check="server_to_client">
+			<param type="unit" />
+			<param type="int" /> <!-- id of the player who got swansong -->
+		</message>
+
+		<message name="sync_swansong_timer" delivery="orderer" receiver="unit">
+			<param type="unit" />
+			<param type="float" />	<!-- current -->
+			<param type="float" />	<!-- total -->
+			<param type="int" />	<!-- revives -->
+			<param type="int" />	<!-- id of the player with swansong -->
 		</message>
 	</rpc>
 	
